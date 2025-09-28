@@ -1,0 +1,19 @@
+{
+  "demos": [
+    {
+      "title": "EHR Data",
+      "href": "https://raw.githubusercontent.com/gramener/datasets/refs/heads/main/ehr.csv",
+      "body": "Electronic Health Records covering patient demographics, clinical metrics, comorbidities, medications, etc. over time"
+    },
+    {
+      "title": "Card Transactions",
+      "href": "https://raw.githubusercontent.com/gramener/datasets/main/card_transactions.csv",
+      "body": "Card transactions data with details on issuer country, transaction amount, and other details."
+    },
+    {
+      "title": "Pharma Trails",
+      "href": "https://raw.githubusercontent.com/gramener/datasets/main/pharma-trials.xlsx",
+      "body": "Pharmaceutical trails data with details on drug name, trial phase, trial status, and other details."
+    }
+  ]
+}

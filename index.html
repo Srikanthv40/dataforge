@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>FlexcapForge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root { --bg:#0b1020; --fg:#e6e6e6; --muted:#a8b0c0; --card:#12182c; --accent:#5b8cff; }
+      body { margin:0; font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial; background:var(--bg); color:var(--fg); }
+      header { padding:14px 16px; background:#0d1326; border-bottom:1px solid #1d2747; display:flex; gap:12px; align-items:center; }
+      header h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:.2px; }
+      header .spacer { flex:1; }
+      button { background:var(--accent); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+      button.secondary { background:#1e2a4a; }
+      input, select, textarea { background:#0f1630; color:var(--fg); border:1px solid #25345f; border-radius:6px; padding:8px; }
+      textarea { width:100%; min-height:120px; }
+      main { display:grid; grid-template-columns: 340px 1fr; gap:16px; padding:16px; }
+      .card { background:var(--card); border:1px solid #1d2747; border-radius:10px; padding:12px; }
+      .stack { display:flex; flex-direction:column; gap:10px; }
+      .row { display:flex; gap:8px; flex-wrap:wrap; }
+      .tabs { display:flex; gap:6px; border-bottom:1px solid #1d2747; }
+      .tab { padding:8px 10px; cursor:pointer; border:1px solid transparent; border-top-left-radius:8px; border-top-right-radius:8px; }
+      .tab.active { background:#141c38; border-color:#1d2747; }
+      .section { display:none; }
+      .section.active { display:block; }
+
+      /* Soft wrap long text in all code/preview areas */
+      pre {
+        background:#0f1630; color:#d9e1ff; padding:10px; border-radius:8px; 
+        overflow:auto; max-height:380px;
+        white-space: pre-wrap;          /* preserve newlines, allow line wrapping */ 
+        overflow-wrap: anywhere;        /* break long unbreakable tokens when needed */ 
+        word-break: break-word;         /* legacy/helpful support */ 
+      } /* MDN: white-space / overflow-wrap guidance */
+
+      .muted { color:var(--muted); }
+      .grid { display:grid; gap:10px; }
+      .two { grid-template-columns: 1fr 1fr; }
+      .label { font-size:12px; color:var(--muted); margin-bottom:4px; }
+      .footer { padding:10px 16px; color:#8ea2d6; border-top:1px solid #1d2747; }
+      .badge { display:inline-block; padding:2px 6px; background:#1e2a4a; border-radius:999px; font-size:12px; }
+    </style>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => { document.title = 'flexcap forge — Postgres Edition'; });
+    </script>
+  </head>
+  <body>
+    <header>
+      <h1>FlexcapForge</h1>
+      <span class="badge">No file uploads</span>
+      <div class="spacer"></div>
+      <button id="open-llm">Configure LLM Provider</button>
+    </header>
+
+    <main>
+      <!-- Left: Connection -->
+      <section class="card stack">
+        <div>
+          <div class="label">Postgres Connection</div>
+          <div class="stack">
+            <div class="row">
+              <input id="pg-host" placeholder="Host" style="flex:1;min-width:160px" />
+              <input id="pg-port" placeholder="Port" value="5432" style="width:100px" />
+            </div>
+            <div class="row">
+              <input id="pg-db" placeholder="Database" style="flex:1;min-width:160px" />
+              <input id="pg-user" placeholder="User" style="flex:1;min-width:160px" />
+              <input id="pg-pass" placeholder="Password" type="password" style="flex:1;min-width:160px" />
+            </div>
+            <div class="row">
+              <button id="pg-test">Test & Load Schemas</button>
+              <select id="pg-schema" style="min-width:180px; flex:1"></select>
+              <button id="analyze">Analyze Schema + Generate</button>
+            </div>
+            <div id="status" class="muted">Idle</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="label">LLM Provider</div>
+          <div class="stack">
+            <div class="row">
+              <input id="llm-base" placeholder="Base URL (OpenAI-compatible)" style="flex:1" />
+            </div>
+            <div class="row">
+              <input id="llm-key" placeholder="API Key" type="password" style="flex:1" />
+              <input id="llm-model" placeholder="Model (e.g., gpt-4o-mini)" style="flex:1" />
+            </div>
+            <div class="row">
+              <button id="save-llm" class="secondary">Save Provider</button>
+            </div>
+            <div id="llm-note" class="muted">Keys are kept in this browser only.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Results -->
+      <section class="card stack">
+        <div class="tabs">
+          <div class="tab active" data-tab="overview">Overview</div>
+          <div class="tab" data-tab="columns">Column Descriptions</div>
+          <div class="tab" data-tab="relations">Relationships</div>
+          <div class="tab" data-tab="dbt">DBT Rules</div>
+          <div class="tab" data-tab="sql">SQL</div><!-- ADDED -->
+          <div class="tab" data-tab="chat">Chat</div>
+        </div>
+
+        <section id="overview" class="section active">
+          <div class="grid two">
+            <div>
+              <div class="label">Schema Summary</div>
+              <pre id="overview-pre"></pre>
+            </div>
+            <div>
+              <div class="label">Sampling Note</div>
+              <pre>Quick insights are based on small samples for speed; full data is used later in validation runs.</pre>
+            </div>
+          </div>
+        </section>
+
+        <section id="columns" class="section">
+          <div class="label">AI Descriptions (per table/column)</div>
+          <pre id="columns-pre"></pre>
+        </section>
+
+        <section id="relations" class="section">
+          <div class="label">Foreign Keys</div>
+          <pre id="relations-pre"></pre>
+        </section>
+
+        <section id="dbt" class="section">
+          <div class="label">Generated DBT (sources.yml, schema.yml, and SQL stubs)</div>
+          <pre id="dbt-pre"></pre>
+        </section>
+
+        <section id="sql" class="section"><!-- ADDED -->
+          <div class="label">Generated SQL</div>
+          <pre id="sql-sql"></pre>
+          <div class="label">Result Preview</div>
+          <pre id="sql-rows"></pre>
+        </section>
+
+        <section id="chat" class="section">
+          <div class="label">Ask about this schema</div>
+          <textarea id="chat-input" placeholder="e.g., How many orders last week?"></textarea>
+          <div class="row">
+            <button id="chat-send">Send</button>
+            <span class="muted" id="chat-hint">Chat uses the connected schema and may generate SQL for data questions.</span>
+          </div>
+          <pre id="chat-pre"></pre>
+        </section>
+      </section>
+    </main>
+
+    <div class="footer">Local-only demo for Postgres; keys are stored in browser storage.</div>
+
+    <script type="module" src="js/provider-config.js"></script>
+    <script type="module" src="js/postgres-service.js"></script>
+    <script type="module" src="js/llm-service.js"></script>
+    <script type="module" src="js/dbt-generation.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
